@@ -11,9 +11,9 @@ SPREADSHEET_ID = "1TqiNXXAgfKlSu2b_Yr9r6AdQU_WacdROsuhcHL0i6Mk"
 def conectar_google_sheets():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
-    if "GOOGLE_CREDENTIALS_JSON" in os.environ:
-        # Modo Railway (usa variable de entorno)
-        credentials_dict = json.loads(os.environ["GOOGLE_CREDENTIALS_JSON"])
+    if "GSHEETS_KEY" in os.environ:
+        # Modo GitHub Actions (usa secreto)
+        credentials_dict = json.loads(os.environ["GSHEETS_KEY"])
         creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
     else:
         # Modo local (usa archivo)
@@ -22,6 +22,7 @@ def conectar_google_sheets():
     client = gspread.authorize(creds)
     print("✅ Conexión con Google Sheets exitosa")
     return client.open_by_key(SPREADSHEET_ID)
+
 
 def cargar_palabras_clave(sheet):
     try:

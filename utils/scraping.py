@@ -20,16 +20,18 @@ R_COMMIT = True
 
 def conectar_google_sheets():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name("service_account.json", scope)
-    client = gspread.authorize(creds)
-    return client.open_by_key(SPREADSHEET_ID)
-R_COMMIT = True
 
-def conectar_google_sheets():
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name("service_account.json", scope)
+    if "GSHEETS_KEY" in os.environ:
+        # En entorno de producción (GitHub Actions)
+        credentials_dict = json.loads(os.environ["GSHEETS_KEY"])
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
+    else:
+        # En entorno local
+        creds = ServiceAccountCredentials.from_json_keyfile_name("service_account.json", scope)
+
     client = gspread.authorize(creds)
     return client.open_by_key(SPREADSHEET_ID)
+
 
 
 
