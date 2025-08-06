@@ -23,9 +23,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: 🗝️ Crear archivo de credenciales
-        run: |
-          echo "${{ secrets.GSHEETS_KEY }}" > service_account.json
 
       - name: 🧪 Ejecutar scraper
         run: python main.py

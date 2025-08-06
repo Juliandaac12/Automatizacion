@@ -22,15 +22,17 @@ def conectar_google_sheets():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
     if "GSHEETS_KEY" in os.environ:
-        # En entorno de producción (GitHub Actions)
+        # En producción (GitHub Actions)
         credentials_dict = json.loads(os.environ["GSHEETS_KEY"])
         creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
     else:
-        # En entorno local
+        # En local (con archivo físico)
         creds = ServiceAccountCredentials.from_json_keyfile_name("service_account.json", scope)
 
     client = gspread.authorize(creds)
+    print("✅ Conexión con Google Sheets exitosa")
     return client.open_by_key(SPREADSHEET_ID)
+
 
 
 
