@@ -11,7 +11,7 @@ jobs:
 
     # ← Aquí pones el env
     env:
-      GSHEETS_KEY: ${{ secrets.GSHEETS_KEY }}
+      GSHEETS_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
 
     steps:
       - name: 📥 Clonar repositorio
