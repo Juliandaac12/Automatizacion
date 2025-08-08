@@ -1,9 +1,10 @@
 import os
 import json
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
 import pandas as pd
 from datetime import datetime
+from oauth2client.service_account import ServiceAccountCredentials
+from gspread.utils import rowcol_to_a1
 
 SPREADSHEET_ID = "1TqiNXXAgfKlSu2b_Yr9r6AdQU_WacdROsuhcHL0i6Mk"
 
@@ -12,30 +13,25 @@ def conectar_google_sheets():
         "https://spreadsheets.google.com/feeds",
         "https://www.googleapis.com/auth/drive"
     ]
-
     if "GCP_SERVICE_ACCOUNT_KEY" in os.environ:
         creds_dict = json.loads(os.environ["GCP_SERVICE_ACCOUNT_KEY"])
         creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     else:
         creds = ServiceAccountCredentials.from_json_keyfile_name("service_account.json", scope)
-
     client = gspread.authorize(creds)
     print("✅ Conexión con Google Sheets exitosa")
     return client.open_by_key(SPREADSHEET_ID)
-    
-
 
 def cargar_palabras_clave(sheet):
     try:
         hoja = sheet.worksheet("Palabras Clave")
-        palabras_raw = hoja.col_values(6)[7:19]  # Columna B, desde fila 9
+        palabras_raw = hoja.col_values(6)[7:19]
         palabras_clave = [p.strip() for p in palabras_raw if p.strip()]
-        print(f"🔑 {len(palabras_clave)} palabras clave cargadas desde Google Sheets.")
+        print(f"🔑 {len(palabras_clave)} palabras clave cargadas.")
         return palabras_clave
     except Exception as e:
         print(f"❌ Error al cargar palabras clave: {e}")
         return []
-
 
 def guardar_en_hoja(resultados, fecha_objetivo):
     if not resultados:
@@ -45,46 +41,59 @@ def guardar_en_hoja(resultados, fecha_objetivo):
     mes = datetime.strptime(fecha_objetivo, "%Y-%m-%d").strftime("%B").capitalize()
     sheet = conectar_google_sheets()
 
-    columnas_ordenadas = [
+    columnas = [
         "Número", "FyH Extracción", "FyH Publicación", "ID", "Título",
         "Descripción", "Tipo", "Monto", "Tipo Monto",
         "LINK FICHA", "FyH TERRENO", "OBLIG?", "FyH CIERRE"
     ]
-
-    df_nuevo = pd.DataFrame(resultados)
+    df = pd.DataFrame(resultados)
 
     try:
         hoja = sheet.worksheet(mes)
-        data_existente = hoja.get_all_records()
+        datos_existentes = hoja.get_all_records()
     except gspread.exceptions.WorksheetNotFound:
         hoja = sheet.add_worksheet(title=mes, rows="1000", cols="20")
-        hoja.append_row(columnas_ordenadas)
-        data_existente = []
+        hoja.append_row(columnas)
+        # Pintar encabezado de amarillo
+        hoja.format("A1:M1", {"backgroundColor": {"red": 1, "green": 1, "blue": 0}})
+        datos_existentes = []
 
-    ultimo_numero = int(data_existente[-1]["Número"]) if data_existente else 0
-    ids_existentes = set(row["ID"] for row in data_existente)
+    último = int(datos_existentes[-1]["Número"]) if datos_existentes else 0
+    ids_exist = {r["ID"] for r in datos_existentes}
 
-    df_nuevo = df_nuevo[~df_nuevo["id"].isin(ids_existentes)]
-
-    if df_nuevo.empty:
-        print("📄 No hay nuevas licitaciones para agregar (todas ya existen en la hoja).")
+    df = df[~df["id"].isin(ids_exist)]
+    if df.empty:
+        print("📄 No hay nuevas licitaciones.")
         return
 
-    df_nuevo["Número"] = range(ultimo_numero + 1, ultimo_numero + 1 + len(df_nuevo))
-    df_nuevo["FyH Extracción"] = df_nuevo["fecha_extraccion"]
-    df_nuevo["FyH Publicación"] = df_nuevo["fecha_publicacion"]
-    df_nuevo["ID"] = df_nuevo["id"]
-    df_nuevo["Título"] = df_nuevo["titulo"]
-    df_nuevo["Descripción"] = df_nuevo["descripcion"]
-    df_nuevo["Tipo"] = df_nuevo["tipo"]
-    df_nuevo["Monto"] = df_nuevo["monto"]
-    df_nuevo["Tipo Monto"] = df_nuevo["tipo_monto"]
-    df_nuevo["LINK FICHA"] = df_nuevo["link_ficha"]
-    df_nuevo["FyH TERRENO"] = df_nuevo["fecha_visita"]
-    df_nuevo["OBLIG?"] = df_nuevo["visita_obligatoria"]
-    df_nuevo["FyH CIERRE"] = df_nuevo["fecha_cierre"]
+    # Renombrar columnas y ordenar
+    df["Número"]           = range(último+1, último+1+len(df))
+    df["FyH Extracción"]   = df["fecha_extraccion"]
+    df["FyH Publicación"]  = df["fecha_publicacion"]
+    df["ID"]               = df["id"]
+    df["Título"]           = df["titulo"]
+    df["Descripción"]      = df["descripcion"]
+    df["Tipo"]             = df["tipo"]
+    df["Monto"]            = df["monto"]
+    df["Tipo Monto"]       = df["tipo_monto"]
+    df["LINK FICHA"]       = df["link_ficha"]
+    df["FyH TERRENO"]      = df["fecha_visita"]
+    df["OBLIG?"]           = df["visita_obligatoria"]
+    df["FyH CIERRE"]       = df["fecha_cierre"]
+    df = df[columnas]
 
-    df_nuevo = df_nuevo[columnas_ordenadas]
+    # Insertar datos
+    start_row = len(datos_existentes) + 2
+    hoja.append_rows(df.values.tolist(), value_input_option="USER_ENTERED")
 
-    hoja.append_rows(df_nuevo.values.tolist(), value_input_option="USER_ENTERED")
-    print(f"✅ {len(df_nuevo)} nuevas licitaciones guardadas en la hoja '{mes}'")
+    # Formato condicional manual (rojo/verde) en columnas clave
+    verdes = {"backgroundColor": {"red": 0.8, "green": 0.94, "blue": 0.75}}
+    rojos  = {"backgroundColor": {"red": 0.98, "green": 0.7,  "blue": 0.7}}
+    cols_idx = {"Monto":8, "Tipo Monto":9, "FyH TERRENO":11, "OBLIG?":12}
+    for i, row in enumerate(df.itertuples(index=False), start=start_row):
+        for name, col in cols_idx.items():
+            val = getattr(row, name.replace(" ", "_").lower())
+            cell = rowcol_to_a1(i, col)
+            hoja.format(cell, verdes if val != "NF" else rojos)
+
+    print(f"✅ {len(df)} nuevas licitaciones guardadas en '{mes}'.")
