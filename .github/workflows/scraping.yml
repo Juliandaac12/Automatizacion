@@ -16,7 +16,7 @@ jobs:
       - name: 🔐 Configurar credenciales GCP
         # Lee el JSON completo desde el secreto y lo escribe en service_account.json
         run: |
-          echo "${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}" > service_account.json
+          printif "${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}" > service_account.json
 
       - name: 🐍 Configurar Python
         uses: actions/setup-python@v4
