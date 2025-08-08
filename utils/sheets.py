@@ -5,24 +5,24 @@ from oauth2client.service_account import ServiceAccountCredentials
 import pandas as pd
 from datetime import datetime
 
-
 SPREADSHEET_ID = "1TqiNXXAgfKlSu2b_Yr9r6AdQU_WacdROsuhcHL0i6Mk"
 
 def conectar_google_sheets():
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    scope = [
+        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/drive"
+    ]
 
-    if "GSHEETS_KEY" in os.environ:
-        # Modo producción (GitHub Actions)
-        credentials_dict = json.loads(os.environ["GSHEETS_KEY"])
-        creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
+    if "GCP_SERVICE_ACCOUNT_KEY" in os.environ:
+        creds_dict = json.loads(os.environ["GCP_SERVICE_ACCOUNT_KEY"])
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     else:
-        # Modo local (archivo físico)
         creds = ServiceAccountCredentials.from_json_keyfile_name("service_account.json", scope)
 
     client = gspread.authorize(creds)
     print("✅ Conexión con Google Sheets exitosa")
     return client.open_by_key(SPREADSHEET_ID)
-
+    
 
 
 def cargar_palabras_clave(sheet):

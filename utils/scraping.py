@@ -7,6 +7,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 import gspread
 from selenium.webdriver.support import expected_conditions as EC
 from datetime import datetime
+from utils.sheets import conectar_google_sheets 
 import time
 import os
 import json
@@ -19,14 +20,17 @@ SPREADSHEET_ID = "1TqiNXXAgfKlSu2b_Yr9r6AdQU_WacdROsuhcHL0i6Mk"
 R_COMMIT = True
 
 def conectar_google_sheets():
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    scope = [
+        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/drive"
+    ]
 
-    if "GSHEETS_KEY" in os.environ:
-        # En producción (GitHub Actions)
-        credentials_dict = json.loads(os.environ["GSHEETS_KEY"])
-        creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
+    # Producción: lee el JSON desde la variable de entorno
+    if "GCP_SERVICE_ACCOUNT_KEY" in os.environ:
+        creds_dict = json.loads(os.environ["GCP_SERVICE_ACCOUNT_KEY"])
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     else:
-        # En local (con archivo físico)
+        # Local: usa el fichero service_account.json
         creds = ServiceAccountCredentials.from_json_keyfile_name("service_account.json", scope)
 
     client = gspread.authorize(creds)
